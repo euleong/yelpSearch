@@ -7,6 +7,7 @@
 //
 
 #import "AppDelegate.h"
+#import "MainYelpViewController.h"
 
 @implementation AppDelegate
 
@@ -14,6 +15,13 @@
 {
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     // Override point for customization after application launch.
+   
+    MainYelpViewController *mainYelpViewController = [[MainYelpViewController alloc] init];
+    UINavigationController *navigationViewController = [[UINavigationController alloc] initWithRootViewController:mainYelpViewController];
+    navigationViewController.navigationBar.barTintColor = [UIColor colorWithRed:250/255.0 green:84/255.0 blue:0/255.0 alpha:1];
+    navigationViewController.navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName : [UIColor whiteColor]};
+    self.window.rootViewController = navigationViewController;
+    
     self.window.backgroundColor = [UIColor whiteColor];
     [self.window makeKeyAndVisible];
     return YES;
