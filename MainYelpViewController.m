@@ -8,7 +8,6 @@
 
 #import "MainYelpViewController.h"
 #import "RestaurantTableViewCell.h"
-#import "FiltersViewController.h"
 #import "YelpClient.h"
 #import "UIImageView+AFNetworking.h"
 
@@ -26,6 +25,7 @@ UIBarButtonItem *filterButton;
 @property (weak, nonatomic) IBOutlet UITableView *restaurantsTableView;
 @property (strong, nonatomic) YelpClient *client;
 @property (strong, nonatomic) UISearchBar *searchBar;
+@property (strong ,nonatomic) NSMutableDictionary *parameters;
 @end
 
 @implementation MainYelpViewController
@@ -35,7 +35,10 @@ UIBarButtonItem *filterButton;
     self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
     if (self) {
         // Custom initialization
-        [self searchYelp:@"Thai"];
+        self.parameters = [[NSMutableDictionary alloc] init];
+        self.parameters[@"term"] = @"Thai";
+        self.parameters[@"location"] = @"San Francisco";
+        //[self searchYelp:@"Thai"];
     }
     return self;
 }
@@ -65,8 +68,15 @@ UIBarButtonItem *filterButton;
 
 - (void)viewWillAppear:(BOOL)animated
 {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [self searchYelp:[defaults valueForKey:@"Categories"]];
+    //NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    //[self searchYelp:[defaults valueForKey:@"Categories"]];
+    NSLog(@"search parameters %@", self.parameters);
+    [self searchYelpWithParameters:self.parameters];
+    /*
+    NSString *searchTerm = [NSString stringWithFormat:@"%@",self.parameters[@"term"]];
+    [self searchYelp:searchTerm];
+     */
+    self.searchBar.text = @"";
 }
 
 - (void)didReceiveMemoryWarning
@@ -89,8 +99,29 @@ UIBarButtonItem *filterButton;
 
     // set address label
     id locationObject = restaurants[indexPath.row][@"location"];
-    cell.restaurantAddress.text = [NSString stringWithFormat:@"%@, %@", [locationObject objectForKey:@"address"][0],
-                                   [locationObject objectForKey:@"neighborhoods"][0]];
+    id addressObject = [locationObject objectForKey:@"address"];
+    id neighborhoodsObject = [locationObject objectForKey:@"neighborhoods"];
+    
+    NSString *address = @"";
+    if (addressObject && [addressObject count])
+    {
+        address = addressObject[0];
+    }
+    
+    
+    NSString *neighborhood = @"";
+    if (neighborhoodsObject && [neighborhoodsObject count])
+    {
+        neighborhood = neighborhoodsObject[0];
+    }
+
+    NSString *addressFormatStr = @"%@%@";
+    if ([address length] && [neighborhood length])
+    {
+        addressFormatStr = @"%@, %@";
+    }
+    cell.restaurantAddress.text = [NSString stringWithFormat:addressFormatStr, address, neighborhood];
+
     
     // set image
     [cell.restaurantImage setImageWithURL:[NSURL URLWithString:restaurants[indexPath.row][@"image_url"]] placeholderImage:[UIImage imageNamed:cell.restaurantName.text]];
@@ -109,6 +140,7 @@ UIBarButtonItem *filterButton;
     
     // hide since API doesn't provide price range
     cell.restaurantPriceRange.hidden = YES;
+    cell.restaurantDistance.hidden = YES;
     
     
     return cell;
@@ -133,7 +165,7 @@ UIBarButtonItem *filterButton;
     [self.client searchWithTerm:searchTerm success:^(AFHTTPRequestOperation *operation, id response) {
         //NSLog(@"response: %@", response);
         restaurants = [response  objectForKey:@"businesses"];
-        NSLog(@"businesses: %@", restaurants);
+        //NSLog(@"businesses: %@", restaurants);
         [self.restaurantsTableView reloadData];
         // TODO scroll back to top of list
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
@@ -142,10 +174,30 @@ UIBarButtonItem *filterButton;
 
 }
 
+- (void) searchYelpWithParameters:(NSDictionary *)parameters
+{
+ 
+    // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
+    self.client = [[YelpClient alloc] initWithConsumerKey:kYelpConsumerKey consumerSecret:kYelpConsumerSecret accessToken:kYelpToken accessSecret:kYelpTokenSecret];
+    
+    [self.client searchWithParameters:parameters success:^(AFHTTPRequestOperation *operation, id response) {
+        //NSLog(@"response: %@", response);
+        restaurants = [response  objectForKey:@"businesses"];
+        //NSLog(@"businesses: %@", restaurants);
+        [self.restaurantsTableView reloadData];
+        // TODO scroll back to top of list
+    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+        NSLog(@"error: %@", [error description]);
+    }];
+}
+
 -(void)filter:(id)sender
 {
-    FiltersViewController *fvc = [[FiltersViewController alloc] init];
-    [self.navigationController pushViewController:fvc animated:YES];
+    FiltersViewController *fvc = [[FiltersViewController alloc] initWithNibName:@"FiltersViewController" bundle:nil];
+    fvc.delegate = self;
+    
+    [[self navigationController] pushViewController:fvc animated:YES];
+    //[self.navigationController pushViewController:fvc animated:YES];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -157,6 +209,28 @@ UIBarButtonItem *filterButton;
 {
     [searchBar resignFirstResponder];
     [self searchYelp:searchBar.text];
+}
+
+- (void)addItemViewController:(FiltersViewController *)controller setCategory:(NSString *)category
+{
+    //NSLog(@"This was returned from FiltersViewController %@",category);
+    self.parameters[@"term"] = category;
+}
+
+- (void)addItemViewController:(FiltersViewController *)controller setSwitches:(NSDictionary *)switches
+{
+    // this is the only switch filter that api supports
+    self.parameters[@"deals_filter"] = switches[@"Offering a Deal"];
+}
+
+- (void)addItemViewController:(FiltersViewController *)controller setDistance:(NSString *)distance
+{
+    self.parameters[@"distance"] = distance;
+}
+
+- (void)addItemViewController:(FiltersViewController *)controller setSortBy:(NSInteger)sortBy
+{
+    self.parameters[@"sort"] = @(sortBy);
 }
 
 @end

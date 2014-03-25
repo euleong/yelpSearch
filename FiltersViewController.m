@@ -9,12 +9,15 @@
 #import "FiltersViewController.h"
 #import "ToggleSwitchCell.h"
 #import "FilterOptionCell.h"
+#import <objc/runtime.h>
 
 @interface FiltersViewController ()
 @property (nonatomic, strong) NSArray *filterCategories;
 @property (weak, nonatomic) IBOutlet UITableView *filtersTableView;
 
+
 @end
+
 NSString * const SWITCHES = @"switches";
 NSString * const EXPAND = @"expand";
 NSString * const TOGGLE_SWITCH = @"ToggleSwitchCell";
@@ -23,7 +26,8 @@ NSMutableDictionary *selectedCategories;
 NSMutableDictionary *expandedCategories;
 UIBarButtonItem *cancelButton;
 UIBarButtonItem *searchButton;
-NSUserDefaults *defaults;
+//NSUserDefaults *defaults;
+static NSString *tag = @"CellTag";
 
 @implementation FiltersViewController
 
@@ -48,7 +52,7 @@ NSUserDefaults *defaults;
                            @{
                                 @"name":@"Sort By",
                                 @"type":@"expand",
-                                @"options":@[@"Best Match",@"Distance",@"Rating",@"Most Reviewed"]
+                                @"options":@[@"Best Match",@"Distance",@"Rating"]
                             },
                            @{
                                 @"name":@"General Features",
@@ -63,30 +67,32 @@ NSUserDefaults *defaults;
                            nil
                            ];
         
+        
+        //defaults = [NSUserDefaults standardUserDefaults];
+        
         selectedCategories = [NSMutableDictionary
                               dictionaryWithDictionary:
                               @{
-                                @"Open Now" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Offering a Deal" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Hot & New" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Delivery" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Take-out" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Accepts Credit Cards" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Wheelchair Accessible" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Full Bar" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Beer & Wine Only" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Happy Hour" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}],
-                                @"Free Wi-Fi" : [NSMutableDictionary dictionaryWithDictionary:@{@"selected": @NO}]
-                              }];
+                                @"Open Now" : @NO,//[defaults objectForKey:@"Open Now"],
+                                @"Offering a Deal" : @NO,//[defaults objectForKey:@"Offering a Deal"],
+                                @"Hot & New" : @NO,//[defaults objectForKey:@"Hot & New"],
+                                @"Delivery" : @NO,
+                                @"Take-out" : @NO,
+                                @"Accepts Credit Cards" : @NO,
+                                @"Wheelchair Accessible" : @NO,
+                                @"Full Bar" : @NO,
+                                @"Beer & Wine Only" : @NO,
+                                @"Happy Hour" : @NO,
+                                @"Free Wi-Fi" : @NO
+                                }];
+        //NSLog(@"%@", selectedCategories);
         
         expandedCategories = [NSMutableDictionary dictionaryWithDictionary:
                               @{
                                 @"Distance" : [NSMutableDictionary dictionaryWithDictionary:@{@"expanded": @NO, @"selected":@0}],
                                 @"Sort By" : [NSMutableDictionary dictionaryWithDictionary:@{@"expanded":@NO, @"selected":@0}],
                                 @"Categories" : [NSMutableDictionary dictionaryWithDictionary:@{@"expanded":@NO, @"selected":@35}]
-                              }];
-        
-        defaults = [NSUserDefaults standardUserDefaults];
+                                }];
                                 
     }
     return self;
@@ -114,8 +120,6 @@ NSUserDefaults *defaults;
     [searchButton setTitleTextAttributes:@{NSForegroundColorAttributeName:[UIColor whiteColor]} forState:UIControlStateNormal];
     self.navigationItem.rightBarButtonItem = searchButton;
     
-    
-    //[expandedCategories[@"Distance"] setValue:[defaults integerForKey:@"Distance"] forKey:@"selected"];
 }
 
 - (void)didReceiveMemoryWarning
@@ -131,26 +135,7 @@ NSUserDefaults *defaults;
 
 - (void)search:(id)sender
 {
-
-    // save values
-    for (NSString* toggleKey in selectedCategories.allKeys)
-    {
-            [defaults setObject:[NSNumber numberWithBool:[selectedCategories[toggleKey][@"selected"] boolValue]] forKey:toggleKey];
-    }
-             
-    int index = [expandedCategories[@"Distance"][@"selected"] intValue];
-    NSString *selectedStr = self.filterCategories[1][@"options"][index];
-    [defaults setObject:selectedStr forKey:@"Distance"];
-    
-    index = [expandedCategories[@"Sort By"][@"selected"] intValue];
-    selectedStr = self.filterCategories[2][@"options"][index];
-    [defaults setObject:selectedStr forKey:@"Sort By"];
-    
-    index = [expandedCategories[@"Categories"][@"selected"] intValue];
-    selectedStr = self.filterCategories[4][@"options"][index];
-    [defaults setObject:selectedStr forKey:@"Categories"];
-    [defaults synchronize];
-    
+    [self saveValues];
     [self.navigationController popViewControllerAnimated:YES];
 }
 
@@ -158,13 +143,16 @@ NSUserDefaults *defaults;
 {
     NSInteger sectionIndex = indexPath.section;
     NSString *labelName = self.filterCategories[indexPath.section][@"options"][indexPath.row];
-    
+
     if (self.filterCategories[sectionIndex][@"type"] == SWITCHES)
     {
         ToggleSwitchCell *cell = [tableView dequeueReusableCellWithIdentifier:TOGGLE_SWITCH forIndexPath:indexPath];
-        int selected = [defaults integerForKey:labelName];
         cell.switchName.text = labelName;
-        cell.toggleSwitch.on = selected;//[selected boolValue];
+        BOOL toggleValue = [[selectedCategories objectForKey:labelName] boolValue];//[defaults boolForKey:labelName];
+        //NSLog(@"%@: %d", labelName, toggleValue);
+        [cell.toggleSwitch setOn:toggleValue animated:NO];
+        [cell.toggleSwitch addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
+        objc_setAssociatedObject(cell.toggleSwitch, &tag, cell, OBJC_ASSOCIATION_RETAIN);
         return cell;
     }
     else
@@ -175,6 +163,9 @@ NSUserDefaults *defaults;
         if (![expandedCategories[sectionName][@"expanded"] boolValue])
         {
             [cell setAccessoryType:UITableViewCellAccessoryCheckmark];
+            //labelName = [defaults objectForKey:self.filterCategories[sectionIndex][@"name"]];
+            int selectedIndex = [expandedCategories[self.filterCategories[sectionIndex][@"name"]][@"selected"] integerValue];
+            labelName = self.filterCategories[sectionIndex][@"options"][selectedIndex];
         }
         // expanded
         else
@@ -274,6 +265,54 @@ NSUserDefaults *defaults;
             [self.filtersTableView deleteRowsAtIndexPaths:rows withRowAnimation:UITableViewRowAnimationFade];
         }
     }
+        
+}
+
+-(void) switchChanged:(id)sender {
+    
+    UISwitch* switcher = (UISwitch*)sender;
+    ToggleSwitchCell *cell = objc_getAssociatedObject(switcher, &tag);
+    [selectedCategories setObject:@(switcher.on) forKey:cell.switchName.text];
+    [self.filtersTableView reloadData];
+     
+}
+
+-(void) saveValues
+{
+    // save values
+    /*
+    for (NSString* toggleKey in selectedCategories.allKeys)
+    {
+        [defaults setBool:[selectedCategories[toggleKey] boolValue] forKey:toggleKey];
+    }
+     */
+    [self.delegate addItemViewController:self setSwitches:selectedCategories];
+    
+    int index = [expandedCategories[@"Distance"][@"selected"] intValue];
+    NSString *distanceStr = self.filterCategories[1][@"options"][index];
+    //[defaults setObject:selectedStr forKey:@"Distance"];
+    [self.delegate addItemViewController:self setDistance:distanceStr];
+    
+    
+    index = [expandedCategories[@"Sort By"][@"selected"] intValue];
+    NSInteger sortBy = index;//[self.filterCategories[2][@"options"][index] integerValue];
+    [self.delegate addItemViewController:self setSortBy:sortBy];
+    //[defaults setObject:selectedStr forKey:@"Sort By"];
+    
+    index = [expandedCategories[@"Categories"][@"selected"] intValue];
+    NSString *categoryStr = self.filterCategories[4][@"options"][index];
+    //[defaults setObject:selectedStr forKey:@"Categories"];
+    [self.delegate addItemViewController:self setCategory:categoryStr];
+    //[defaults synchronize];
+}
+
+#pragma mark - ToggleSwitchCellDelegate methods
+-(void)sender:(ToggleSwitchCell *)sender didChangeValueForKey:(BOOL)value
+{
+    NSLog(@"cell switched to : %d", value);
+    NSIndexPath *indexPath = [self.filtersTableView indexPathForCell:sender];
+    ToggleSwitchCell *cell = (ToggleSwitchCell *)[self.filtersTableView cellForRowAtIndexPath:indexPath];
+    [selectedCategories setObject:@(value) forKey:cell.switchName.text];
 }
 
 @end
