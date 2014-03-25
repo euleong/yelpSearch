@@ -20,7 +20,7 @@
     self.toggleSwitch.onTintColor = [UIColor colorWithRed:250/255.0 green:84/255.0 blue:0/255.0 alpha:1];
     //self.toggleSwitch.on = NO;
     
-    [self.toggleSwitch addTarget:self action:@selector(didChangeValueForKey:) forControlEvents:UIControlEventValueChanged];
+    [self.toggleSwitch addTarget:self action:@selector(didChangeValue:) forControlEvents:UIControlEventValueChanged];
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated
@@ -32,7 +32,7 @@
 
 -(void)didChangeValue:(id)sender
 {
-    [self.delegate sender:self.toggleSwitch didChangeValue:self.toggleSwitch.on];
+    [self.delegate sender:self didChangeValue:self.toggleSwitch.on];
 }
 
 @end

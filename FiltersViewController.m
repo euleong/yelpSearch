@@ -7,7 +7,6 @@
 //
 
 #import "FiltersViewController.h"
-#import "ToggleSwitchCell.h"
 #import "FilterOptionCell.h"
 #import <objc/runtime.h>
 
@@ -151,8 +150,9 @@ static NSString *tag = @"CellTag";
         BOOL toggleValue = [[selectedCategories objectForKey:labelName] boolValue];//[defaults boolForKey:labelName];
         //NSLog(@"%@: %d", labelName, toggleValue);
         [cell.toggleSwitch setOn:toggleValue animated:NO];
-        [cell.toggleSwitch addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
+        //[cell.toggleSwitch addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
         objc_setAssociatedObject(cell.toggleSwitch, &tag, cell, OBJC_ASSOCIATION_RETAIN);
+        cell.delegate = self;
         return cell;
     }
     else
@@ -307,12 +307,12 @@ static NSString *tag = @"CellTag";
 }
 
 #pragma mark - ToggleSwitchCellDelegate methods
--(void)sender:(ToggleSwitchCell *)sender didChangeValueForKey:(BOOL)value
+-(void)sender:(ToggleSwitchCell *)sender didChangeValue:(BOOL)value
 {
-    NSLog(@"cell switched to : %d", value);
+    NSLog(@"cell %@ switched to : %d", sender.switchName.text, value);
     NSIndexPath *indexPath = [self.filtersTableView indexPathForCell:sender];
-    ToggleSwitchCell *cell = (ToggleSwitchCell *)[self.filtersTableView cellForRowAtIndexPath:indexPath];
-    [selectedCategories setObject:@(value) forKey:cell.switchName.text];
+    [selectedCategories setObject:@(value) forKey:sender.switchName.text];
+    [self.filtersTableView reloadSections:[NSIndexSet indexSetWithIndex:indexPath.section] withRowAnimation:UITableViewRowAnimationNone];
 }
 
 @end

@@ -38,6 +38,7 @@ UIBarButtonItem *filterButton;
         self.parameters = [[NSMutableDictionary alloc] init];
         self.parameters[@"term"] = @"Thai";
         self.parameters[@"location"] = @"San Francisco";
+        //self.parameters[@"ll"] = @"37.7833,122.4167";
         //[self searchYelp:@"Thai"];
     }
     return self;
